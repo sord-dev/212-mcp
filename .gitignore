@@ -1,0 +1,22 @@
+# Ignore all JSON config files in the project
+*_config.json
+
+# Ignore all log files
+*.log
+
+# Ignore all cache files
+*.cache
+
+# Ignore all temporary files
+*.tmp
+*.temp
+
+# Ignore all compiled Python files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Ignore virtual environment directories
+venv/
+env/

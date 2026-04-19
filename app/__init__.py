@@ -1,0 +1,1 @@
+"""Trading212 MCP Server Application Package"""
