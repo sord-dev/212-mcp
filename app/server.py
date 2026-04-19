@@ -15,7 +15,6 @@ mcp = FastMCP("trading212")
 try:
     trading_api = Trading212API()
 except Exception as e:
-    print(f"Warning: Failed to initialize Trading212 API: {e}")
     trading_api = None
 
 @mcp.tool("get_balance")
@@ -83,6 +82,5 @@ async def get_rate_limit_status():
         raise RuntimeError(f"Failed to get rate limit status: {str(e)}")
 
 if __name__ == "__main__":
-    print("Starting Trading212 MCP Server...")
     mcp.run()
     

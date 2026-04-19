@@ -23,7 +23,7 @@ class Trading212API:
         
         self.config_path = config_path
         self.config = self.load_config()
-        self.base_url = "https://live.trading212.com/api/v0"
+        self.base_url = self.config['base_url']
         self.headers = self._build_auth_headers()
         
         # Rate limiting state
@@ -50,6 +50,9 @@ class Trading212API:
             if not config.get('api_key') or not config.get('api_secret'):
                 raise ValueError("API key and secret must be configured")
             
+            if not config.get('base_url'):
+                raise ValueError("Base URL must be configured")
+                       
             if 'PLACEHOLDER' in config.get('api_key', '') or 'PLACEHOLDER' in config.get('api_secret', ''):
                 raise ValueError("Please replace placeholder credentials with actual Trading212 API keys")
             
@@ -87,8 +90,7 @@ class Trading212API:
                 delay = self._min_delay * (self._backoff_factor ** requests_used)
                 jitter = random.uniform(0.5, 1.5)  # Add randomness
                 delay *= jitter
-                
-                print(f"Rate limit warning: {remaining}/{limit} requests remaining. Delaying {delay:.2f}s")
+
                 time.sleep(delay)
     
     def _update_rate_limit_info(self, response):
@@ -156,7 +158,3 @@ class Trading212API:
     def get_positions(self) -> Dict:
         """Get all current positions"""
         return self.make_request('/equity/positions')
-    
-    def get_pies(self) -> Dict:
-        """Get current pies information"""
-        return self.make_request('/equity/pies')
