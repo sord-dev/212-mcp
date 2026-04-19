@@ -4,17 +4,12 @@ Trading212 MCP Server
 Simple Model Context Protocol server for fetching Trading212 portfolio data
 """
 
-from fastapi import FastAPI, HTTPException
-import uvicorn
+from mcp.server.fastmcp import FastMCP
 from .clients.trading212 import Trading212API
 from .models import BalanceResponse, PositionsResponse, Position, Instrument, AccountSummaryResponse, RateLimitStatus
 
-# Initialize FastAPI app
-app = FastAPI(
-    title="Trading212 MCP Server",
-    description="Model Context Protocol server for Trading212 portfolio data",
-    version="1.0.0"
-)
+# Initialize MCP server
+mcp = FastMCP("trading212")
 
 # Initialize Trading212 API client
 try:
@@ -23,28 +18,23 @@ except Exception as e:
     print(f"Warning: Failed to initialize Trading212 API: {e}")
     trading_api = None
 
-@app.get("/")
-async def root():
-    """Health check endpoint"""
-    return {"message": "Trading212 MCP Server is running", "status": "healthy"}
-
-@app.post("/tools/get_balance", response_model=AccountSummaryResponse)
+@mcp.tool("get_balance")
 async def get_balance():
     """Get Trading212 account summary including cash and investments"""
     if not trading_api:
-        raise HTTPException(status_code=500, detail="Trading212 API not initialized")
+        raise RuntimeError("Trading212 API not initialized")
     
     try:
         summary_data = trading_api.get_balance()
         return AccountSummaryResponse(**summary_data)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch balance: {str(e)}")
+        raise RuntimeError(f"Failed to fetch balance: {str(e)}")
 
-@app.post("/tools/get_positions", response_model=PositionsResponse)
+@mcp.tool("get_positions")
 async def get_positions():
     """Get Trading212 portfolio positions"""
     if not trading_api:
-        raise HTTPException(status_code=500, detail="Trading212 API not initialized")
+        raise RuntimeError("Trading212 API not initialized")
     
     try:
         portfolio_data = trading_api.get_positions()
@@ -78,21 +68,21 @@ async def get_positions():
         
         return PositionsResponse(positions=positions, count=len(positions))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch positions: {str(e)}")
+        raise RuntimeError(f"Failed to fetch positions: {str(e)}")
 
 
-@app.get("/tools/get_rate_limit_status", response_model=RateLimitStatus)
+@mcp.tool("get_rate_limit_status")
 async def get_rate_limit_status():
     """Get current rate limit status for Trading212 API"""
     if not trading_api:
-        raise HTTPException(status_code=500, detail="Trading212 API not initialized")
+        raise RuntimeError("Trading212 API not initialized")
     
     try:
         return RateLimitStatus(**trading_api.get_rate_limit_status())
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get rate limit status: {str(e)}")
+        raise RuntimeError(f"Failed to get rate limit status: {str(e)}")
 
 if __name__ == "__main__":
     print("Starting Trading212 MCP Server...")
-    print("Visit http://localhost:8000/docs for API documentation")
-    uvicorn.run(app, host="127.0.0.1", port=8000)
+    mcp.run()
+    
