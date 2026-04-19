@@ -8,6 +8,7 @@ A Model Context Protocol (MCP) server that provides Claude Desktop with access t
 - **Portfolio Positions**: Fetch all current positions with detailed instrument information
 - **Rate Limiting**: Built-in rate limiting with Trading212 API headers and configurable backoff
 - **Real-time Monitoring**: Rate limit status endpoint for monitoring API usage
+- **Read-only Operations**: All tools are read-only and do not modify your Trading212 account
 
 ## Project Structure
 
@@ -15,11 +16,11 @@ A Model Context Protocol (MCP) server that provides Claude Desktop with access t
 /
 ├── app/                          # Main application package
 │   ├── __init__.py              # Package initialization
-│   ├── server.py                # FastAPI MCP server
+│   ├── server.py                # FastMCP server with tool definitions
 │   ├── models.py                # Pydantic response models  
 │   └── clients/                 # API clients
 │       ├── __init__.py         
-│       └── trading212.py        # Trading212 API client
+│       └── trading212.py        # Trading212 API client with rate limiting
 ├── config/                      # Configuration files
 │   └── trading212_config.json   # API credentials and settings
 ├── requirements.txt             # Python dependencies
@@ -32,7 +33,7 @@ A Model Context Protocol (MCP) server that provides Claude Desktop with access t
 
 1. **Configure API Credentials**
    
-   Create `config/trading212_config.json` with your Trading212 API credentials:
+   Edit `config/trading212_config.json` with your Trading212 API credentials:
    ```json
    {
      "api_key": "your_api_key_here",
@@ -55,94 +56,135 @@ A Model Context Protocol (MCP) server that provides Claude Desktop with access t
    ```bash
    python run.py
    ```
-   
-   The server will start at `http://127.0.0.1:8000`
+
+## Development and Testing
+
+### MCP Inspector
+For development and testing of the MCP tools, you can use the official MCP inspector:
+
+```bash
+npx @modelcontextprotocol/inspector python run.py
+```
+
+This provides a web interface to test and debug your MCP server tools interactively.
+
+### Manual Testing
+You can also test the server directly:
+```bash
+python run.py
+```
 
 ## Claude Desktop Integration
 
-To connect this MCP server to Claude Desktop, add the following to your Claude Desktop MCP configuration:
+To connect this MCP server to Claude Desktop, add the following to your Claude Desktop MCP configuration file:
 
+**Location**: 
+- **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`  
+- **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
+
+**Configuration**:
 ```json
 {
   "mcpServers": {
     "trading212": {
       "command": "python",
-      "args": ["/path/to/your/project/run.py"],
-      "cwd": "/path/to/your/project"
+      "args": ["/absolute/path/to/your/project/run.py"],
+      "cwd": "/absolute/path/to/your/project"
     }
   }
 }
 ```
 
-## Available Endpoints
+Replace the paths with your actual project location.
 
-### Tools (for Claude Desktop)
+## Available MCP Tools
 
-- **`/tools/get_balance`** - Get comprehensive account summary
-- **`/tools/get_positions`** - Get all portfolio positions  
-- **`/tools/get_rate_limit_status`** - Get current API rate limit status
+All tools are **read-only** and **safe** - they only fetch data and never modify your Trading212 account.
 
-### API Documentation
+### `get_balance`
+**Description**: Get comprehensive Trading212 account summary  
+**Parameters**: None  
+**Returns**: Account balance including:
+- `cash`: Available cash, amount in pies, reserved for orders
+- `investments`: Current value, realized/unrealized P&L, total cost
+- `totalValue`: Overall account value
+- `currency`: Account currency (e.g., "GBP")
+- `id`: Account ID
 
-Visit `http://localhost:8000/docs` when the server is running to view the interactive API documentation.
+### `get_positions` 
+**Description**: Get all current portfolio positions  
+**Parameters**: None  
+**Returns**: List of positions including:
+- `instrument`: Ticker, company name, currency, ISIN
+- `quantity`: Shares owned, available for trading, in pies
+- `averagePrice`: Average purchase price per share
+- `currentPrice`: Current market price per share
+- `ppl`: Profit/loss for this position
+- `currentValue`: Total current value of position
+- `totalCost`: Total amount paid for position
+
+### `get_rate_limit_status`
+**Description**: Get current Trading212 API rate limit status  
+**Parameters**: None  
+**Returns**: Rate limiting information including:
+- `limit`: Total requests allowed per period
+- `remaining`: Remaining requests in current period  
+- `reset_timestamp`: When the limit resets (Unix timestamp)
+- `reset_in_seconds`: Seconds until limit resets
+- `period`: Rate limit period duration
+- `used`: Requests used in current period
 
 ## Rate Limiting
 
 The server implements intelligent rate limiting based on Trading212's response headers:
-- Tracks remaining requests and reset times
-- Implements exponential backoff when approaching limits
-- Configurable safety margins and delay parameters
-- Thread-safe for concurrent requests
+- **Proactive Management**: Tracks remaining requests and reset times
+- **Exponential Backoff**: Implements backoff when approaching limits
+- **Configurable**: Safety margins and delay parameters via config
+- **Thread-safe**: Safe for concurrent requests from Claude Desktop
 
-## Development
+### Rate Limiting Configuration
 
-The project uses:
-- **FastAPI** for the web server and automatic API documentation
-- **Pydantic** for data validation and serialization
-- **Requests** for HTTP API calls to Trading212
-- **Threading** for thread-safe rate limiting
-
-2. Configure your Trading212 API credentials in `trading212_config.json`:
+In `config/trading212_config.json`:
 ```json
 {
-  "api_key": "your_trading212_api_key",
-  "api_secret": "your_trading212_api_secret"
+  "rate_limiting": {
+    "safety_margin": 0.1,      // Start backoff at 10% remaining requests
+    "min_delay": 1.0,          // Minimum delay in seconds  
+    "backoff_factor": 2.0      // Exponential backoff multiplier
+  }
 }
 ```
 
-## Running the Server
-
-Start the MCP server:
-```bash
-python server.py
-```
-
-The server will start on `http://localhost:8000`
-
-You can view the API documentation at `http://localhost:8000/docs`
-
-## Available Tools
-
-### get_balance
-Fetches your Trading212 account balance including:
-- Total account value
-- Available cash
-- Total invested amount  
-- Profit/Loss
-
-### get_positions
-Fetches your current portfolio positions with details for each holding:
-- Ticker symbol
-- Quantity held
-- Average purchase price
-- Current market price
-- Position profit/loss
-- Current market value
-
-## Claude Desktop Integration
-
-To use with Claude Desktop, add this server to your MCP configuration. The server exposes two tools that Claude can use to fetch your Trading212 data on demand.
-
 ## Security
 
-This server runs locally on your machine and only communicates with the Trading212 API using your configured credentials. No data is stored or transmitted to third parties.
+- **Local Only**: Server runs locally on your machine
+- **Direct API**: Only communicates with Trading212 API using your credentials
+- **No Data Storage**: No persistent data storage or caching
+- **No Third Parties**: No data transmitted to external services
+- **Read-only**: All operations are read-only, cannot modify your account
+
+## Technical Details
+
+The project uses:
+- **FastMCP**: Model Context Protocol server framework
+- **Pydantic**: Data validation and serialization
+- **Requests**: HTTP API calls to Trading212
+- **Threading**: Thread-safe rate limiting
+- **JSON Config**: Simple configuration management
+
+## Troubleshooting
+
+### Common Issues
+
+1. **"Trading212 API not initialized"**
+   - Check your API credentials in `config/trading212_config.json`
+   - Ensure the config file exists and has valid JSON syntax
+
+2. **Rate limit warnings**
+   - The server will automatically handle rate limiting
+   - Consider increasing `safety_margin` in config if warnings are frequent
+
+3. **MCP connection issues**
+   - Verify the absolute paths in Claude Desktop config
+   - Check that Python and dependencies are available
+   - Test with MCP inspector first: `npx @modelcontextprotocol/inspector python run.py`

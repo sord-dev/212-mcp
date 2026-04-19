@@ -5,6 +5,7 @@ Simple Model Context Protocol server for fetching Trading212 portfolio data
 """
 
 from mcp.server.fastmcp import FastMCP
+from mcp.types import ToolAnnotations
 from .clients.trading212 import Trading212API
 from .models import BalanceResponse, PositionsResponse, Position, Instrument, AccountSummaryResponse, RateLimitStatus
 
@@ -17,9 +18,22 @@ try:
 except Exception as e:
     trading_api = None
 
-@mcp.tool("get_balance")
+@mcp.tool(
+    name="get_balance",
+    title="Get Account Balance", 
+    description="Get comprehensive Trading212 account summary including cash and investments",
+    meta={"readonly": True, "category": "account"}
+)
 async def get_balance():
-    """Get Trading212 account summary including cash and investments"""
+    """Get comprehensive Trading212 account summary.
+    
+    Returns detailed account information including cash balances, investment values,
+    and overall portfolio performance. This is a read-only operation that does not
+    modify your Trading212 account in any way.
+    
+    Returns:
+        AccountSummaryResponse: Complete account summary with cash, investments, and totals
+    """
     if not trading_api:
         raise RuntimeError("Trading212 API not initialized")
     
@@ -29,9 +43,22 @@ async def get_balance():
     except Exception as e:
         raise RuntimeError(f"Failed to fetch balance: {str(e)}")
 
-@mcp.tool("get_positions")
+@mcp.tool(
+    name="get_positions",
+    title="Get Portfolio Positions",
+    description="Get all current Trading212 portfolio positions with detailed instrument information", 
+    meta={"readonly": True, "category": "portfolio"}
+)
 async def get_positions():
-    """Get Trading212 portfolio positions"""
+    """Get all current Trading212 portfolio positions.
+    
+    Retrieves detailed information about all positions in your Trading212 portfolio,
+    including instrument details, quantities, prices, and profit/loss calculations.
+    This is a read-only operation that does not modify your Trading212 account.
+    
+    Returns:
+        PositionsResponse: List of all portfolio positions with detailed metadata
+    """
     if not trading_api:
         raise RuntimeError("Trading212 API not initialized")
     
@@ -70,9 +97,22 @@ async def get_positions():
         raise RuntimeError(f"Failed to fetch positions: {str(e)}")
 
 
-@mcp.tool("get_rate_limit_status")
+@mcp.tool(
+    name="get_rate_limit_status", 
+    title="Get Rate Limit Status",
+    description="Get current Trading212 API rate limit status and usage statistics",
+    meta={"readonly": True, "category": "monitoring"}
+)
 async def get_rate_limit_status():
-    """Get current rate limit status for Trading212 API"""
+    """Get current Trading212 API rate limit status.
+    
+    Returns information about the current API rate limiting status, including
+    remaining requests, reset times, and usage statistics. Useful for monitoring
+    API usage and avoiding rate limit violations. This is a read-only operation.
+    
+    Returns:
+        RateLimitStatus: Current rate limit information and timing details
+    """
     if not trading_api:
         raise RuntimeError("Trading212 API not initialized")
     
